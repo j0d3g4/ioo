@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Sombras que nunca se van</title>
+<link href="https://fonts.googleapis.com/css2?family=Crimson+Text:ital@1&display=swap" rel="stylesheet" />
+<style>
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    background: #0b0c0f;
+    color: #ddd;
+    font-family: 'Crimson Text', serif;
+    overflow: hidden;
+    position: relative;
+  }
+  canvas#fog, canvas#rain, canvas#lightning {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+  }
+  canvas#fog { z-index: 0; }
+  canvas#rain { z-index: 1; }
+  canvas#lightning { z-index: 4; }
+
+  .content {
+    position: relative;
+    z-index: 10;
+    max-width: 900px;
+    margin: 60px auto;
+    text-align: center;
+    padding: 20px;
+  }
+  h1 {
+    color: #b33a3a;
+    font-size: 3em;
+    margin-bottom: 20px;
+    text-shadow: 0 0 12px #440000;
+    font-style: italic;
+    user-select: none;
+  }
+  button.button {
+    padding: 12px 30px;
+    margin: 10px 5px;
+    border: none;
+    border-radius: 6px;
+    background-color: #222;
+    color: white;
+    font-size: 1.1em;
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.3s ease;
+  }
+  button.button:hover {
+    background-color: #333;
+  }
+  .quote-frame, .poem-box {
+    background: rgba(20,20,20,0.9);
+    border: 1px solid #444;
+    border-radius: 10px;
+    margin: 30px auto;
+    padding: 30px;
+    font-size: 1.6em;
+    line-height: 1.6em;
+    cursor: pointer;
+    user-select: none;
+    box-shadow: 0 0 20px rgba(255,255,255,0.05);
+    min-height: 130px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.5s ease, box-shadow 0.5s ease;
+    color: #eee;
+  }
+  .quote-frame:hover, .poem-box:hover {
+    box-shadow: 0 0 40px rgba(255, 255, 255, 0.2);
+    background-color: rgba(35, 35, 35, 0.95);
+  }
+  .active-flash {
+    animation: flashBG 0.6s ease forwards;
+  }
+  @keyframes flashBG {
+    0% { background-color: rgba(200, 20, 20, 0.9); box-shadow: 0 0 40px rgba(255, 80, 80, 0.7);}
+    100% { background-color: rgba(20,20,20,0.9); box-shadow: 0 0 20px rgba(255,255,255,0.05);}
+  }
+  .final-line {
+    margin-top: 60px;
+    font-size: 0.6em;
+    color: #4a1a1a;
+    font-family: 'Courier New', Courier, monospace;
+    opacity: 0.15;
+    user-select: none;
+    font-style: normal;
+  }
+  .bleed-flash {
+    animation: bleedFlash 0.3s ease forwards;
+  }
+  @keyframes bleedFlash {
+    0% { background-color: rgba(180, 0, 0, 0.6); }
+    100% { background-color: transparent; }
+  }
+
+  /* Cuadro en esquina superior derecha */
+  #topRightBox {
+    position: fixed;
+    top: 15px;
+    right: 15px;
+    background: rgba(35, 35, 35, 0.85);
+    border: 2px solid #b33a3a;
+    padding: 12px 20px;
+    border-radius: 8px;
+    color: #eee;
+    font-size: 1.1em;
+    font-weight: 600;
+    user-select: none;
+    cursor: pointer;
+    z-index: 20;
+    box-shadow: 0 0 10px #b33a3a;
+    transition: background-color 0.3s ease, box-shadow 0.3s ease;
+  }
+  #topRightBox:hover {
+    background-color: #b33a3a;
+    color: #fff;
+    box-shadow: 0 0 20px #ff6666;
+  }
+
+  /* Controles de volumen */
+  .volume-control {
+    margin: 10px auto;
+    max-width: 300px;
+    text-align: left;
+    color: #bbb;
+    font-size: 0.9em;
+    user-select: none;
+  }
+  .volume-control label {
+    display: block;
+    margin-bottom: 6px;
+  }
+  .volume-control input[type=range] {
+    width: 100%;
+  }
+</style>
+</head>
+<body>
+
+<canvas id="fog"></canvas>
+<canvas id="rain"></canvas>
+<canvas id="lightning"></canvas>
+
+<audio id="music" loop>
+  <source src="musica1.mp3" type="audio/mpeg" />
+</audio>
+<audio id="rainSound" loop>
+  <source src="lluvia.mp3" type="audio/mpeg" />
+</audio>
+
+<div id="topRightBox" tabindex="0" title="Haz clic para mostrar mensaje">Haz clic aquí</div>
+
+<div class="content">
+  <h1>Sombras que nunca se van</h1>
+  <button class="button" id="audioBtn">Reproducir Música & Lluvia</button>
+
+  <div class="volume-control">
+    <label for="musicVol">Volumen Música:</label>
+    <input type="range" id="musicVol" min="0" max="1" step="0.01" value="0.5" />
+  </div>
+  <div class="volume-control">
+    <label for="rainVol">Volumen Lluvia:</label>
+    <input type="range" id="rainVol" min="0" max="1" step="0.01" value="0.5" />
+  </div>
+
+  <div class="volume-control">
+    <label for="songSelector">Elegir canción:</label>
+    <select id="songSelector">
+      <option value="musica1.mp3" selected>musica1.mp3</option>
+      <option value="musica2.mp3">musica2.mp3</option>
+      <option value="musica3.mp3">musica3.mp3</option>
+      <option value="musica4.mp3">musica4.mp3</option>
+    </select>
+  </div>
+
+  <div class="quote-frame" id="quoteFrame" tabindex="0">Clic para leer pensamientos rotos.</div>
+
+  <div class="poem-box" id="poemBox" tabindex="0">Clic para leer un poema oscuro.</div>
+
+  <div class="final-line">no creo que pase de este año.</div>
+</div>
+
+<script>
+  const music = document.getElementById("music");
+  const rainSound = document.getElementById("rainSound");
+  const audioBtn = document.getElementById("audioBtn");
+  const musicVolSlider = document.getElementById("musicVol");
+  const rainVolSlider = document.getElementById("rainVol");
+  const songSelector = document.getElementById("songSelector");
+  let playing = false;
+
+  music.volume = musicVolSlider.value;
+  rainSound.volume = rainVolSlider.value;
+
+  audioBtn.addEventListener('click', () => {
+    if (!playing) {
+      music.play().catch(() => {});
+      rainSound.play().catch(() => {});
+      audioBtn.textContent = "Pausar Música & Lluvia";
+    } else {
+      music.pause();
+      rainSound.pause();
+      audioBtn.textContent = "Reproducir Música & Lluvia";
+    }
+    playing = !playing;
+  });
+
+  musicVolSlider.addEventListener('input', () => {
+    music.volume = musicVolSlider.value;
+  });
+  rainVolSlider.addEventListener('input', () => {
+    rainSound.volume = rainVolSlider.value;
+  });
+
+  songSelector.addEventListener("change", () => {
+    const selectedSong = songSelector.value;
+    music.pause();
+    music.querySelector("source").src = selectedSong;
+    music.load();
+    if (playing) music.play();
+  });
+
+  // Texto de frases
+  const phrases = [
+    "Me cansé de luchar con lo que siento y fingir que estoy bien.",
+    "La noche me entiende, el día me juzga.",
+    "Estoy tan roto que hasta el silencio duele.",
+    "No me duele estar solo, me duele haber confiado.",
+    "A veces desaparecer suena como descanso.",
+    "No pido ayuda porque ya no sé cómo hablar.",
+    "La tristeza me abraza más fuerte que nadie.",
+    "No me estoy rindiendo, solo me estoy cansando.",
+    "Es difícil respirar cuando cargas con todo por dentro.",
+    "¿Alguna vez has sentido que ya no perteneces aquí?",
+    "Quiero dormir un año entero.",
+    "Mi corazón ya no late, solo soporta.",
+    "No sé quién soy, y ya no me importa.",
+    "No fue un mal día, fue una vida difícil.",
+    "He aprendido a sonreír con los ojos llorosos.",
+    "Si me ves callado, estoy gritando por dentro.",
+    "Mi alma pesa más que mi cuerpo.",
+    "Cada recuerdo es un cuchillo más.",
+    "Me estoy borrando poco a poco.",
+    "¿Y si ya no quiero seguir fingiendo?",
+    "Prefiero la oscuridad, al menos allí no se nota que lloro.",
+    "No tengo miedo de morir, tengo miedo de seguir igual."
+  ];
+
+  // Poemas
+  const poems = [
+    `Muero un poco cada vez que callo lo que siento.
+Y tú no ves la herida porque sangra en silencio.`,
+
+    `Los días pesan como cadenas invisibles,
+las noches me arrastran sin compasión.
+No queda fe, sólo costumbre de dolor.`,
+
+    `Ya no busco salida, sólo un rincón donde rendirme
+y que el mundo me olvide en paz.`,
+
+    `Cuando la sombra se alarga,
+el alma se hace pequeña,
+los sueños se vuelven cadenas,
+y el tiempo, una lenta condena.`,
+
+    `Mis lágrimas se esconden,
+bajo un manto de silencio,
+el frío me abraza fuerte,
+y el miedo es el único dueño.`
+  ];
+
+  async function typeText(element, text, delay = 40) {
+    element.textContent = '';
+    for (let i = 0; i < text.length; i++) {
+      element.textContent += text.charAt(i);
+      await new Promise(r => setTimeout(r, delay));
+    }
+  }
+
+  const quoteFrame = document.getElementById("quoteFrame");
+  quoteFrame.addEventListener('click', async () => {
+    quoteFrame.classList.add('active-flash');
+    const phrase = phrases[Math.floor(Math.random() * phrases.length)];
+    await typeText(quoteFrame, phrase);
+    setTimeout(() => quoteFrame.classList.remove('active-flash'), 600);
+  });
+
+  const poemBox = document.getElementById("poemBox");
+  poemBox.addEventListener('click', async () => {
+    poemBox.classList.add('active-flash');
+    const poem = poems[Math.floor(Math.random() * poems.length)];
+    await typeText(poemBox, poem);
+    setTimeout(() => poemBox.classList.remove('active-flash'), 600);
+  });
+
+  // Sangrado en toda la pantalla cuando se hace clic
+  function triggerBleedFlash() {
+    document.body.classList.add('bleed-flash');
+    setTimeout(() => {
+      document.body.classList.remove('bleed-flash');
+    }, 300);
+  }
+
+  document.body.addEventListener('click', (e) => {
+    if (e.target === document.body || e.target === document.documentElement) {
+      triggerBleedFlash();
+    }
+  });
+
+  // Cuadro superior derecho: mensaje al hacer clic
+  const topRightBox = document.getElementById("topRightBox");
+  topRightBox.addEventListener('click', () => {
+    alert("No todo está perdido, pero la sombra crece.");
+  });
+
+  // Permitir foco y tecla enter para el cuadro superior derecho
+  topRightBox.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      topRightBox.click();
+    }
+  });
+
+  // --- CANVAS Fog ---
+
+  const canvasFog = document.getElementById('fog');
+  const ctxFog = canvasFog.getContext('2d');
+
+  let width = window.innerWidth;
+  let height = window.innerHeight;
+  canvasFog.width = width;
+  canvasFog.height = height;
+
+  window.addEventListener('resize', () => {
+    width = window.innerWidth;
+    height = window.innerHeight;
+    canvasFog.width = width;
+    canvasFog.height = height;
+  });
+
+  class FogParticle {
+    constructor() {
+      this.x = Math.random() * width;
+      this.y = Math.random() * height;
+      this.radius = 60 + Math.random() * 100;
+      this.alpha = 0.02 + Math.random() * 0.04;
+      this.speed = 0.1 + Math.random() * 0.3;
+    }
+    update() {
+      this.x -= this.speed;
+      if (this.x + this.radius < 0) {
+        this.x = width + this.radius;
+        this.y = Math.random() * height;
+      }
+    }
+    draw() {
+      const gradient = ctxFog.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.radius);
+      gradient.addColorStop(0, `rgba(220, 220, 220, ${this.alpha})`);
+      gradient.addColorStop(1, 'rgba(220, 220, 220, 0)');
+      ctxFog.fillStyle = gradient;
+      ctxFog.beginPath();
+      ctxFog.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+      ctxFog.fill();
+    }
+  }
+
+  const fogParticles = [];
+  for (let i = 0; i < 15; i++) {
+    fogParticles.push(new FogParticle());
+  }
+
+  function animateFog() {
+    ctxFog.clearRect(0, 0, width, height);
+    fogParticles.forEach(p => {
+      p.update();
+      p.draw();
+    });
+    requestAnimationFrame(animateFog);
+  }
+  animateFog();
+
+  // --- CANVAS Rain ---
+
+  const canvasRain = document.getElementById('rain');
+  const ctxRain = canvasRain.getContext('2d');
+  canvasRain.width = width;
+  canvasRain.height = height;
+
+  class RainDrop {
+    constructor() {
+      this.reset();
+    }
+    reset() {
+      this.x = Math.random() * width;
+      this.y = Math.random() * -height;
+      this.length = 15 + Math.random() * 15;
+      this.speed = 4 + Math.random() * 6;
+      this.opacity = 0.1 + Math.random() * 0.4;
+      this.wind = -0.5 + Math.random();
+    }
+    update() {
+      this.x += this.wind;
+      this.y += this.speed;
+      if (this.y > height) {
+        this.reset();
+      }
+    }
+    draw() {
+      ctxRain.strokeStyle = `rgba(200, 200, 255, ${this.opacity})`;
+      ctxRain.lineWidth = 1;
+      ctxRain.beginPath();
+      ctxRain.moveTo(this.x, this.y);
+      ctxRain.lineTo(this.x + this.wind * 3, this.y - this.length);
+      ctxRain.stroke();
+    }
+  }
+
+  const rainDrops = [];
+  for (let i = 0; i < 300; i++) {
+    rainDrops.push(new RainDrop());
+  }
+
+  function animateRain() {
+    ctxRain.clearRect(0, 0, width, height);
+    rainDrops.forEach(drop => {
+      drop.update();
+      drop.draw();
+    });
+    requestAnimationFrame(animateRain);
+  }
+  animateRain();
+
+  // --- CANVAS Lightning ---
+
+  const canvasLightning = document.getElementById('lightning');
+  const ctxLightning = canvasLightning.getContext('2d');
+  canvasLightning.width = width;
+  canvasLightning.height = height;
+
+  let lightningTimer = 0;
+  let lightningDuration = 0;
+  let lightningActive = false;
+
+  function lightningStrike() {
+    if (!lightningActive && Math.random() < 0.005) {
+      lightningActive = true;
+      lightningDuration = 5 + Math.floor(Math.random() * 15);
+      lightningTimer = 0;
+    }
+  }
+
+  function animateLightning() {
+    if (lightningActive) {
+      lightningTimer++;
+      ctxLightning.clearRect(0, 0, width, height);
+
+      const alpha = Math.sin((lightningTimer / lightningDuration) * Math.PI) * 0.6;
+      ctxLightning.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+      ctxLightning.fillRect(0, 0, width, height);
+
+      if (lightningTimer >= lightningDuration) {
+        lightningActive = false;
+        ctxLightning.clearRect(0, 0, width, height);
+      }
+    } else {
+      lightningStrike();
+    }
+    requestAnimationFrame(animateLightning);
+  }
+  animateLightning();
+
+</script>
+
+</body>
+</html>
